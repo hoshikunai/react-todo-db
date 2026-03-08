@@ -15,7 +15,7 @@ function App() {
 
   const [inputValue, setInputValue] = useState('')
 
-  const handleSubmit = (e: ReactFormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
   e.preventDefault()
 
   if (!inputValue.trim()) return

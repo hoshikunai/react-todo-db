@@ -1,37 +1,59 @@
-// src/App.tsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from './lib/supabaseClient'
 import './App.css'
 
-// Define what a Todo looks like
-interface Todo {
-  id: number
-  text: string
-}
-
-
-// main app
 function App() {
-  const [todos, setTodos] = useState<Todo[]>([])
-
+  const [todos, setTodos] = useState([])
   const [inputValue, setInputValue] = useState('')
+  const [loading, setLoading] = useState(true)
 
-  const handleSubmit = (e: React.FormEvent) => {
-  e.preventDefault()
+  useEffect(() => {
+    fetchTodos()
+  }, [])
 
-  if (!inputValue.trim()) return
+  async function fetchTodos() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('todos')
+      .select('*')
+      .order('created_at', { ascending: true })
 
-  const newTodo: Todo = {
-    id: Date.now(),
-    text: inputValue.trim()
+    if (error) {
+      console.error('Error fetching todos:', error)
+    } else {
+      setTodos(data)
+    }
+    setLoading(false)
   }
 
-  setTodos([ ... todos, newTodo])
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!inputValue.trim()) return
 
-  setInputValue('')
+    const { data, error } = await supabase
+      .from('todos')
+      .insert({ text: inputValue.trim() })
+      .select()
+
+    if (error) {
+      console.error('Error adding todo:', error)
+    } else {
+      setTodos([...todos, data[0]])
+      setInputValue('')
+    }
   }
 
-  const deleteTodo = (id: number) => {
-    setTodos(todos.filter((todo => todo.id !== id)))
+  const deleteTodo = async (id) => {
+    const { error } = await supabase
+      .from('todos')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting todo:', error)
+    } else {
+      setTodos(todos.filter(todo => todo.id !== id))
+    }
   }
 
   return (
@@ -48,19 +70,23 @@ function App() {
         <button type="submit">Add</button>
       </form>
 
-      <ul className="todo-list">
-        <ul className="todo.list">
-          {todos.map((todo) => (
+      {loading ? (
+        <p>Loading todos...</p>
+      ) : (
+        <ul className="todo-list">
+          {todos.map(todo => (
             <li key={todo.id} className="todo-item">
               <span>{todo.text}</span>
-              <button className="delete-btn"
-              onClick={() => deleteTodo(todo.id)}>
+              <button
+                className="delete-btn"
+                onClick={() => deleteTodo(todo.id)}
+              >
                 Delete
               </button>
             </li>
           ))}
         </ul>
-      </ul>
+      )}
     </div>
   )
 }
